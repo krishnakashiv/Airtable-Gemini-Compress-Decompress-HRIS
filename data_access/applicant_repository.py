@@ -263,18 +263,18 @@ class ApplicantRepository:
         
         return self.client.create_record(TABLE_SALARY, fields)
         
-        # Filter further to only get records linked to our specific personal_id
-        records_to_delete = []
-        for record in existing_records:
-            personal_details_field = record.get('fields', {}).get('Personal Details', [])
-            if personal_id in personal_details_field or personal_id in [str(id) for id in personal_details_field]:
-                records_to_delete.append(record)
+        # # Filter further to only get records linked to our specific personal_id
+        # records_to_delete = []
+        # for record in existing_records:
+        #     personal_details_field = record.get('fields', {}).get('Personal Details', [])
+        #     if personal_id in personal_details_field or personal_id in [str(id) for id in personal_details_field]:
+        #         records_to_delete.append(record)
                 
-        logger.info(f"Found {len(records_to_delete)} existing salary preference records to delete")
-        for record in records_to_delete:
-            logger.info(f"Deleting salary preference record: {record['id']}")
-            self.client.delete_record(TABLE_SALARY, record["id"])
+        # logger.info(f"Found {len(records_to_delete)} existing salary preference records to delete")
+        # for record in records_to_delete:
+        #     logger.info(f"Deleting salary preference record: {record['id']}")
+        #     self.client.delete_record(TABLE_SALARY, record["id"])
         
-        logger.info(f"Cleared {len(existing_records)} salary preference record(s).")
+        # logger.info(f"Cleared {len(existing_records)} salary preference record(s).")
         
-        return self.client.create_record(TABLE_SALARY, fields)
+        # return self.client.create_record(TABLE_SALARY, fields)
