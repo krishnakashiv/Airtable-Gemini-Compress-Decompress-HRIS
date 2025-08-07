@@ -79,3 +79,151 @@ To decompress applicant data and rebuild detailed Airtable records:
 python -m app.main decompress <applicant_id>
 ```
 
+## Setup Steps and Field Definitions
+
+### Airtable Base Structure
+The system requires a specific Airtable base structure with the following tables:
+
+1. **Applicants**
+   - `ApplicantId` (Unique identifier for each applicant)
+   - `Personal Details` (Linked record to Personal Details table)
+   - `CompressedJSON` (Long text field to store compressed applicant data)
+   - `Shortlist Status` (Single select field with options: "Shortlisted", "Not Shortlisted")
+   - `LLM Score` (Integer field for AI-generated quality score)
+   - `Screening Reason` (Long text field explaining why applicant was shortlisted/not shortlisted)
+
+2. **Personal Details**
+   - `ApplicantId` (Unique identifier matching the Applicants table)
+   - `Name` (Full name of the applicant)
+   - `Email` (Email address)
+   - `Location` (Country of residence)
+   - `LinkedIn Profile` (URL to LinkedIn profile)
+
+3. **Work Experience**
+   - `Personal Details` (Linked record to Personal Details table)
+   - `Company` (Company name)
+   - `Title` (Job title)
+   - `Start` (Start date in YYYY-MM-DD format)
+   - `End` (End date in YYYY-MM-DD format)
+   - `Technologies` (Comma-separated list of technologies used)
+
+4. **Salary Preferences**
+   - `Personal Details` (Linked record to Personal Details table)
+   - `Preferred Rate` (Hourly rate in USD)
+   - `Minimum Rate` (Minimum acceptable hourly rate in USD)
+   - `Currency` (Currency code, e.g., USD)
+   - `Availability` (Hours available per week)
+
+5. **Shortlisted Leads**
+   - `Applicants` (Linked record to Applicants table)
+   - `Summary` (Long text field for AI-generated summary)
+   - `Score` (Integer field for AI-generated quality score)
+   - `Issues` (Long text field listing data gaps or inconsistencies)
+   - `Follow-Ups` (Long text field with AI-generated follow-up questions)
+
+## How Each Automation Works
+
+### Compression Process
+The compression process extracts data from multiple Airtable tables and consolidates it into a single JSON structure. Here's how it works:
+
+1. Fetch applicant data from all related tables using the ApplicantId
+2. Create a composite Applicant object with all the information
+3. Convert the Applicant object to JSON format
+4. Perform automated screening based on business rules
+5. Send the JSON to Gemini AI for analysis
+6. Update the Applicants table with the compressed JSON and screening results
+
+**Script snippet from compression_service.py:**
+```python
+applicant_data = {
+    "personalInfo": personal_info,
+    "workExperience": work_experience,
+    "salaryPreferences": salary_preferences
+}
+compressed_json = json.dumps(applicant_data, indent=2)
+# Save to Airtable
+repository.save_compressed_json(applicant_id, compressed_json)
+```
+
+### Decompression Process
+The decompression process rebuilds detailed Airtable records from the compressed JSON:
+
+1. Fetch the compressed JSON from the Applicants table
+2. Parse the JSON into an Applicant object
+3. Save personal information to the Personal Details table
+4. Clear existing work experience records and create new ones
+5. Clear existing salary preference records and create new ones
+
+**Script snippet from decompression_service.py:**
+```python
+compressed_data = repository.fetch_compressed_json(applicant_id)
+applicant = Applicant.from_dict(compressed_data)
+# Save decompressed data
+personal_id = repository.save_personal_info(applicant.personal_info, applicant_id)
+repository.save_work_experience(applicant.work_experience, personal_id)
+repository.save_salary_preferences(applicant.salary_preferences, personal_id)
+```
+
+## LLM Integration Configuration and Security
+
+### Configuration
+The LLM integration is configured through environment variables:
+- `GEMINI_API_KEY`: Your Google Gemini API key
+
+The system uses the `gemini-pro` model for text analysis and maintains a retry mechanism for API calls.
+
+### Security
+- API keys are stored in a `.env` file and loaded using `python-dotenv`
+- Keys are never hardcoded in the source files
+- The `.env` file is included in `.gitignore` to prevent accidental commits
+- All API requests are made over HTTPS
+
+**Security implementation in llm_service.py:**
+```python
+# Load API key from environment variables
+load_dotenv()
+api_key = os.getenv("GEMINI_API_KEY")
+
+genai.configure(api_key=api_key)
+model = genai.GenerativeModel('gemini-pro')
+```
+
+## Extending or Customizing Shortlist Criteria
+
+The shortlist criteria can be easily customized by modifying the `business_rules.py` file:
+
+### Current Criteria
+- Minimum total years of experience: 4 years
+- Tier-1 companies: Google, Meta, OpenAI
+- Maximum hourly rate: $100
+- Minimum weekly availability: 20 hours
+- Approved countries: USA, Canada, UK, Germany, India
+
+### Customization Examples
+
+1. **Modify experience requirements:**
+   ```python
+   TOTAL_YEARS_EXPERIENCE = 5  # Change from 4 to 5 years
+   ```
+
+2. **Add new tier-1 companies:**
+   ```python
+   TIER_1_COMPANIES = set(["google", "meta", "openai", "amazon", "microsoft"])
+   ```
+
+3. **Adjust rate limits:**
+   ```python
+   MAX_RATE = 120  # Change from $100 to $120 per hour
+   ```
+
+4. **Add new approved countries:**
+   ```python
+   COUNTRIES = set(["USA", "Canada", "UK", "Germany", "India", "Australia", "Singapore"])
+   ```
+
+5. **Modify availability requirements:**
+   ```python
+   MIN_AVAILABILITY = 25  # Change from 20 to 25 hours per week
+   ```
+
+After making changes to `business_rules.py`, simply run the compression command again to apply the new criteria to applicant evaluations.
