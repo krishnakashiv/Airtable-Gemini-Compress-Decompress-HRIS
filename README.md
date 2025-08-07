@@ -2,6 +2,8 @@
 
 This system is designed to streamline the applicant evaluation process by integrating with Airtable and leveraging Google's Gemini AI model. It automates the screening of candidates based on predefined business criteria and provides AI-powered analysis to generate comprehensive candidate summaries, scores, and follow-up questions.
 
+## **Form Link**: https://forms.fillout.com/t/8J3wNh2A4xus
+
 The system operates in two primary modes:
 1. **Compression**: Extracts detailed applicant information from multiple Airtable tables, consolidates it into a compact JSON format, performs automated screening, and uses Gemini AI to analyze the candidate profile.
 2. **Decompression**: Takes the compressed JSON data and rebuilds detailed records in the appropriate Airtable tables.
